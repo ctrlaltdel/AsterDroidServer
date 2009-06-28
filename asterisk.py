@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-PING_INTERVAL = 5 # seconds
+PING_INTERVAL = 300 # seconds
+ANDROID_JID = "phone2@jabber-server.domain"
 
 from twisted.application import service, internet
 from twisted.internet import reactor, defer
@@ -53,7 +54,7 @@ def AGIHandler ( agi ):
     agi.finish()
     return result
 
-  APPLICATION.jabber.sendMessage("phone1@jabber-server.domain", agi.variables["agi_callerid"])
+  APPLICATION.jabber.sendMessage(ANDROID_JID, agi.variables["agi_callerid"])
   
   df = agi.wait(1)
 
@@ -68,13 +69,14 @@ APPLICATION = utilapplication.UtilApplication()
 
 class JabberClient:
   xmlstream = None
+  pingCounter = 0
 
   def __init__(self, myJid):
     self.myJid = myJid
     
   
   def authd(self,xmlstream):
-    print "authenticated"
+    log.debug("authenticated")
     self.xmlstream = xmlstream
     presence = domish.Element(('jabber:client','presence'))
     xmlstream.send(presence)
@@ -84,11 +86,14 @@ class JabberClient:
     xmlstream.addObserver('/iq',     self.debug)
 
     # Ping every PING_INTERVAL seconds for testing purposes
-    reactor.callLater(PING_INTERVAL, self.sendPing)
+    reactor.callLater(1, self.sendPing)
 
   def sendPing(self):
-    print "Sending out ping packet"
-    self.sendMessage("phone1@jabber-server.domain", "ping")
+    self.pingCounter += 1
+
+    log.debug("Sending out ping packet %d" % self.pingCounter)
+
+    self.sendMessage(ANDROID_JID, "ping:%f:%d" % (time.time(), self.pingCounter))
     reactor.callLater(PING_INTERVAL, self.sendPing)
 
   def sendMessage(self, to, body):
@@ -107,18 +112,34 @@ class JabberClient:
 
 
   def messageReceived(self, elem):
-    print "Message from Android"
-    print type(elem)
-    self.debug(elem)
-    print elem.getAttribute("from")
+    log.debug("Message from Android")
 
-    action = elem.firstChildElement()
+    action = str(elem.firstChildElement())
+
+    if action and action[:5] == "pong:":
+      log.debug ("Received pong packet")
+
+      try:
+        (dummy, timestamp, counter) = action.split(':')
+        timestamp = float(timestamp)
+        counter = int(counter)
+
+        now = time.time()
+        log.debug("Timestamp: %f, Now: %f" % (timestamp, now))
+
+        # delta in ms
+        delta = (time.time() - timestamp) * 1000
+      except Exception:
+        print "Invalid pong packet received"
+
+      log.info("PONG %d %f %f %f" % (counter, delta, timestamp, now))
 
 if __name__ == "__main__":
-  logging.basicConfig()
+  logging.basicConfig(filename="/tmp/asterdroid.log",level=logging.INFO,)
+
   log.setLevel( logging.DEBUG )
-  manager.log.setLevel( logging.DEBUG )
-  fastagi.log.setLevel( logging.DEBUG )
+  manager.log.setLevel( logging.INFO )
+  fastagi.log.setLevel( logging.INFO )
 
   # Manager
   tracker = AsterDroidTracker()
