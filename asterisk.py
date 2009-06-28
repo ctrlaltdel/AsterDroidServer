@@ -65,44 +65,44 @@ def AGIHandler ( agi ):
 APPLICATION = utilapplication.UtilApplication()
 
 class JabberClient:
-    xmlstream = None
+  xmlstream = None
 
-    def __init__(self, myJid):
-        self.myJid = myJid
-        
+  def __init__(self, myJid):
+    self.myJid = myJid
     
-    def authd(self,xmlstream):
-        print "authenticated"
-        self.xmlstream = xmlstream
-        presence = domish.Element(('jabber:client','presence'))
-        xmlstream.send(presence)
-        
-        xmlstream.addObserver('/message',  self.messageReceived)
-        xmlstream.addObserver('/presence', self.debug)
-        xmlstream.addObserver('/iq',       self.debug)
+  
+  def authd(self,xmlstream):
+    print "authenticated"
+    self.xmlstream = xmlstream
+    presence = domish.Element(('jabber:client','presence'))
+    xmlstream.send(presence)
+    
+    xmlstream.addObserver('/message',  self.messageReceived)
+    xmlstream.addObserver('/presence', self.debug)
+    xmlstream.addObserver('/iq',     self.debug)
 
-    def sendMessage(self, to, body):
-        message = domish.Element(('jabber:client','message'))
-        message['to'] = to
-        message['type'] = 'chat'
-        
-        message.addElement('body',None,body)
-        
-        self.xmlstream.send(message)
-        
+  def sendMessage(self, to, body):
+    message = domish.Element(('jabber:client','message'))
+    message['to'] = to
+    message['type'] = 'chat'
+    
+    message.addElement('body',None,body)
+    
+    self.xmlstream.send(message)
+    
 
-    def debug(self, elem):
-        print elem.toXml().encode('utf-8')
-        print "="*20
+  def debug(self, elem):
+    print elem.toXml().encode('utf-8')
+    print "="*20
 
 
-    def messageReceived(self, elem):
-        print "Message from Android"
-        print type(elem)
-        self.debug(elem)
-        print elem.getAttribute("from")
+  def messageReceived(self, elem):
+    print "Message from Android"
+    print type(elem)
+    self.debug(elem)
+    print elem.getAttribute("from")
 
-        action = elem.firstChildElement()
+    action = elem.firstChildElement()
 
 if __name__ == "__main__":
   logging.basicConfig()
