@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 
-HOST     = '127.0.0.1'
-PORT     = 5038
-USERNAME = 'francois'
-SECRET   = 'Thu6aim3'
-
 from twisted.application import service, internet
 from twisted.internet import reactor, defer
 from starpy import manager, fastagi, utilapplication, menu
@@ -19,21 +14,17 @@ log.setLevel( logging.INFO )
 class AsterDroidTracker:
   def main( self ):
     amiDF = APPLICATION.amiSpecifier.login(
-    ).addCallback( self.onAMIConnect )
-    # XXX do something useful on failure to login...
+    ).addCallback( self.onAMIConnect ).addErrback( self.onAMIFailure )
 
   def onAMIConnect( self, ami ):
-    """Register for AMI events"""
-    # XXX should do an initial query to populate channels...
-    # XXX should handle asterisk reboots (at the moment the AMI 
-    # interface will just stop generating events), not a practical
-    # problem at the moment, but should have a periodic check to be sure
-    # the interface is still up, and if not, should close and restart
     log.debug( 'onAMIConnect' )
 
     ami.status().addCallback( self.onStatus, ami=ami )
     ami.registerEvent( 'Newchannel', self.onChannelNew )
     ami.registerEvent( 'Hangup', self.onChannelHangup )
+
+  def onAMIFailure( self, ami ):
+    log.error( 'onAMIFailure' )
 
   def onStatus( self, events, ami=None ):
     """Integrate the current status into our set of channels"""
@@ -60,7 +51,6 @@ def AGIHandler ( agi ):
     agi.finish()
     return result
 
-  #APPLICATION.jabber.sendMessage("francois@jabber-server.domain", agi.variables["agi_callerid"])
   APPLICATION.jabber.sendMessage("phone1@jabber-server.domain", agi.variables["agi_callerid"])
   
   df = agi.wait(1)
@@ -87,10 +77,9 @@ class JabberClient:
         presence = domish.Element(('jabber:client','presence'))
         xmlstream.send(presence)
         
-        xmlstream.addObserver('/message',  self.debug)
+        xmlstream.addObserver('/message',  self.messageReceived)
         xmlstream.addObserver('/presence', self.debug)
-        xmlstream.addObserver('/iq',       self.debug)   
-        #reactor.callLater(5, self.sendMessage, 'francois@jabber-server.domain','test','test')
+        xmlstream.addObserver('/iq',       self.debug)
 
     def sendMessage(self, to, body):
         message = domish.Element(('jabber:client','message'))
@@ -106,6 +95,14 @@ class JabberClient:
         print elem.toXml().encode('utf-8')
         print "="*20
 
+
+    def messageReceived(self, elem):
+        print "Message from Android"
+        print type(elem)
+        self.debug(elem)
+        print elem.getAttribute("from")
+
+        action = elem.firstChildElement()
 
 if __name__ == "__main__":
   logging.basicConfig()
@@ -134,6 +131,5 @@ if __name__ == "__main__":
   factory.addBootstrap("//event/stream/error", jabber.debug)
 
   reactor.connectTCP('jabber-server.domain',5222,factory)
-
 
   reactor.run()
