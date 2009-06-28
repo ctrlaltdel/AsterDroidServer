@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+PING_INTERVAL = 5 # seconds
+
 from twisted.application import service, internet
 from twisted.internet import reactor, defer
 from starpy import manager, fastagi, utilapplication, menu
@@ -80,6 +82,14 @@ class JabberClient:
     xmlstream.addObserver('/message',  self.messageReceived)
     xmlstream.addObserver('/presence', self.debug)
     xmlstream.addObserver('/iq',     self.debug)
+
+    # Ping every PING_INTERVAL seconds for testing purposes
+    reactor.callLater(PING_INTERVAL, self.sendPing)
+
+  def sendPing(self):
+    print "Sending out ping packet"
+    self.sendMessage("phone1@jabber-server.domain", "ping")
+    reactor.callLater(PING_INTERVAL, self.sendPing)
 
   def sendMessage(self, to, body):
     message = domish.Element(('jabber:client','message'))
