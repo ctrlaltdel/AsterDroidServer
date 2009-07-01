@@ -106,17 +106,22 @@ def gotIncomingCall(agi):
   return seq().addErrback(onFailed).addCallback(onSuccess)
 
 if __name__ == "__main__":
+  # Logging
   #logging.basicConfig(filename="/tmp/asterdroid.log",level=logging.INFO,)
   logging.basicConfig()
-
   log.setLevel( logging.DEBUG )
   #fastagi.log.setLevel( logging.DEBUG )
+
+  # Configuration
+  import ConfigParser
+  config = ConfigParser.RawConfigParser()
+  config.read('server.cfg')
 
   queue = defer.DeferredQueue()
 
   # Jabber
-  myJid = jid.JID('asterisk@jabber-server.domain/twisted_words')
-  factory = client.basicClientFactory(myJid, 'gdsgefgds')
+  myJid = jid.JID('%s/AsterDroid' % config.get('jabber', 'username'))
+  factory = client.basicClientFactory(myJid, config.get('jabber', 'password'))
 
   jabber = JabberClient(myJid)
 
@@ -125,11 +130,14 @@ if __name__ == "__main__":
   factory.addBootstrap("//event/client/basicauth/authfailed", jabber.debug)
   factory.addBootstrap("//event/stream/error", jabber.debug)
 
-  reactor.connectTCP('jabber-server.domain',5222,factory)
+  server = config.get('jabber', 'server')
+  port   = config.getint('jabber', 'port')
+  reactor.connectTCP(server, port, factory)
 
   # AGI
   f = fastagi.FastAGIFactory(gotIncomingCall)
-  reactor.listenTCP(4574, f, 50, '127.0.0.1') # only binding on local interface
 
+  agiport = config.getint('asterisk', 'agi_port')
+  reactor.listenTCP(agiport, f, 50, '127.0.0.1') # only binding on local interface
 
   reactor.run()
