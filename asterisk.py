@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 PING_INTERVAL = 300 # seconds
-#ANDROID_JID = "phone1@jabber-server.domain"
-ANDROID_JID = "francois@jabber-server.domain"
+ANDROID_JID = "phone1@jabber-server.domain"
+#ANDROID_JID = "francois@jabber-server.domain"
 
 from twisted.application import service, internet
 from twisted.internet import reactor, defer
@@ -75,22 +75,34 @@ def gotIncomingCall(agi):
   def onSuccess(result):
     log.debug("Success: %s", result)
 
-  def blah(agi):
-    log.debug('blah')
+  def handleCommand(cmd, agi):
+    log.debug('handleCommand, cmd=%s', cmd)
+
+    if cmd == 'hangup':
+      return agi.hangup()
+
+    if cmd == 'pickup_gsm':
+      seq = fastagi.InSequence()
+      seq.append(agi.answer)
+      seq.append(agi.execute, 'Dial', 'SIP/efon/079XXXXXXX1')
+      return seq()
+
+    if cmd == 'pickup_voip':
+      return defer.Deferred(agi.execute, 'Playback', 'invalid')
+
+    # An unknown command was received
+    log.error("Unknown command received: %s", cmd)
+
+  def askAndroid(agi):
+    log.debug('askAndroid')
 
     jabber.sendMessage(ANDROID_JID, "incoming:%s" % agi.variables["agi_callerid"])
 
-    result = queue.get()
-    print result
-
-    return agi.sayAlpha('ABC')
+    return queue.get().addCallback(handleCommand, agi)
 
   seq = fastagi.InSequence()
-
-  seq.append(agi.answer)
-  seq.append(blah, agi)
+  seq.append(askAndroid, agi)
   seq.append(agi.finish)
-
   return seq().addErrback(onFailed).addCallback(onSuccess)
 
 if __name__ == "__main__":
