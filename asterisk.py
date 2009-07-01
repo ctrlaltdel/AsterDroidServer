@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 PING_INTERVAL = 300 # seconds
-ANDROID_JID = "phone2@jabber-server.domain"
+ANDROID_JID = "phone1@jabber-server.domain"
 
 from twisted.application import service, internet
 from twisted.internet import reactor, defer
@@ -51,7 +51,7 @@ def AGIHandler ( agi ):
     return None
 
   def cleanup( result ):
-    agi.finish()
+    #agi.finish()
     return result
 
   APPLICATION.jabber.sendMessage(ANDROID_JID, agi.variables["agi_callerid"])
@@ -133,17 +133,21 @@ class JabberClient:
         print "Invalid pong packet received"
 
       log.info("PONG %d %f %f %f" % (counter, delta, timestamp, now))
+    
+    if action == "reject":
+      log.info("Received reject command")
 
 if __name__ == "__main__":
-  logging.basicConfig(filename="/tmp/asterdroid.log",level=logging.INFO,)
+  #logging.basicConfig(filename="/tmp/asterdroid.log",level=logging.INFO,)
+  logging.basicConfig()
 
   log.setLevel( logging.DEBUG )
-  manager.log.setLevel( logging.INFO )
-  fastagi.log.setLevel( logging.INFO )
+  manager.log.setLevel( logging.DEBUG )
+  fastagi.log.setLevel( logging.DEBUG )
 
   # Manager
-  tracker = AsterDroidTracker()
-  reactor.callWhenRunning( tracker.main )
+  #tracker = AsterDroidTracker()
+  #reactor.callWhenRunning( tracker.main )
 
   # AGI
   f = fastagi.FastAGIFactory(AGIHandler)
