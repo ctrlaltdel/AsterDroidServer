@@ -84,7 +84,7 @@ def gotIncomingCall(agi):
     if cmd == 'pickup_gsm':
       seq = fastagi.InSequence()
       seq.append(agi.answer)
-      seq.append(agi.execute, 'Dial', 'SIP/efon/079XXXXXXX1')
+      seq.append(agi.execute, 'Dial', '${TRUNK}/079XXXXXXX1')
       return seq()
 
     if cmd == 'pickup_voip':
@@ -138,6 +138,11 @@ if __name__ == "__main__":
   f = fastagi.FastAGIFactory(gotIncomingCall)
 
   agiport = config.getint('asterisk', 'agi_port')
-  reactor.listenTCP(agiport, f, 50, '127.0.0.1') # only binding on local interface
+  reactor.listenTCP(agiport, f, 50, '0.0.0.0') # only binding on local interface
+
+  #def _mark():
+  #  print "I'm still alive and kicking"
+  #  reactor.callLater(1, _mark)
+  #reactor.callLater(1, _mark)
 
   reactor.run()
